@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="CosmosDbSampleData/CosmosDbSampleData.csproj" />
+  <Project Path="SecretLibrary/SecretLibrary.csproj" />
+</Solution>
