@@ -14,12 +14,15 @@ namespace CosmosDbSampleData
 
         static async Task Main(string[] args)
         {
+            //官方文档中推荐复用CosmosClient实例，而不是每次操作都创建新的实例
             CosmosClient client = await ConnectUsingConnectionString();
             //CosmosClient client = await ConnectUsingPrimaryKey();
             await VerifyExist(client);
             await QueryOne(client);
             await QueryMultiple(client);
             await QueryMultipleWithSql(client);
+            await QueryWithParameter(client);
+            await QueryWithPaginate(client);
             await UpsertItem(client);
             await CreateItem(client);
             await Task.Delay(2000); // 等待2秒，确保数据已经写入
@@ -153,6 +156,72 @@ namespace CosmosDbSampleData
                     {
                         Console.WriteLine($"商品ID: {item.id}, 商品类别: {item.categoryName}, 商品名称: {item.name}");
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 根据参数查询多条记录（使用raw SQL语句和参数化查询，避免SQL注入风险）
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns></returns>
+        static async Task QueryWithParameter(CosmosClient client)
+        {
+            Console.WriteLine("\n06 根据参数查询记录");
+            Database database = client.GetDatabase("SampleDB");
+            Container container = database.GetContainer("SampleContainer");
+            //使@符号作为参数占位符，避免SQL注入风险
+            string sqlQueryText = "SELECT * FROM c WHERE c.categoryName = @categoryName";
+            //使用参数化查询，避免SQL注入风险
+            QueryDefinition queryDefinition = new QueryDefinition(sqlQueryText).WithParameter("@categoryName", "Components, Pedals");
+            using (FeedIterator<ItemModel> feedIterator = container.GetItemQueryIterator<ItemModel>(queryDefinition))
+            {
+                while (feedIterator.HasMoreResults)
+                {
+                    FeedResponse<ItemModel> response = await feedIterator.ReadNextAsync();
+                    foreach (var item in response)
+                    {
+                        Console.WriteLine($"商品ID: {item.id}, 商品类别: {item.categoryName}, 商品名称: {item.name}");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 分页查询记录（使用raw SQL语句和分页选项，每页返回指定数量的记录）
+        /// 好处：
+        /// 1. 显著降低内存占用与崩溃风险。
+        /// 2. 防止请求超时，提升响应速度。Cosmos DB 对单个 REST 请求有执行时间限制（通常为 5 秒）
+        /// 3. 平滑 RU（ Request Units，吞吐量）消耗，避免限流。分页查询可以将大查询拆分为多个小查询，每个小查询消耗的 RU 更少，从而降低限流风险。
+        /// 4. Cosmos DB 的分页基于 Continuation Token（延续令牌）。这是一个纯字符串（保存了游标信息），服务端不需要维持任何会话状态（Stateless）。
+        ///    你可以把这个 Token 发给前端，前端在下一页请求时再传回后端，非常适合分布式和无状态的服务架构（如 RESTful API、Serverless / Azure Functions）。
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns></returns>
+        static async Task QueryWithPaginate(CosmosClient client)
+        {
+            Console.WriteLine("\n07 分页查询记录");
+            Database database = client.GetDatabase("SampleDB");
+            Container container = database.GetContainer("SampleContainer");
+            string sqlQueryText = "SELECT * FROM c WHERE c.categoryName = 'Components, Pedals'";
+            QueryDefinition queryDefinition = new QueryDefinition(sqlQueryText);
+            //设置分页选项，每页返回3条记录
+            QueryRequestOptions paginateOptions = new QueryRequestOptions
+            {
+                MaxItemCount = 3 // 每页返回的最大记录数
+            };
+            int pageNumber = 1;
+            using (FeedIterator<ItemModel> feedIterator = container.GetItemQueryIterator<ItemModel>(queryDefinition, requestOptions:paginateOptions))
+            {
+                while (feedIterator.HasMoreResults)
+                {
+                    Console.WriteLine($"第 {pageNumber} 页:");
+                    FeedResponse<ItemModel> response = await feedIterator.ReadNextAsync();
+                    foreach (var item in response)
+                    {
+                        Console.WriteLine($"商品ID: {item.id}, 商品类别: {item.categoryName}, 商品名称: {item.name}");
+                    }
+                    pageNumber++;
                 }
             }
         }
