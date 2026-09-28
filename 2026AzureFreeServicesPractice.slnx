@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="AzureKeyVault/AzureKeyVault.csproj" Id="8b3feb0b-b9dc-4e8d-8955-9955278e3815" />
   <Project Path="CosmosDbSampleData/CosmosDbSampleData.csproj" />
   <Project Path="SecretLibrary/SecretLibrary.csproj" />
 </Solution>
