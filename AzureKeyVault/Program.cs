@@ -20,14 +20,6 @@ namespace AzureKeyVault
 
         static void Main(string[] args)
         {
-            using var listener = new AzureEventSourceListener(
-    (args, message) =>
-    {
-        if (args.EventSource.Name == "Azure-Identity")
-            Console.WriteLine(message);
-    },
-    EventLevel.Informational);
-
             GetSecretFromKeyVault();
             Console.WriteLine();
             CreateSecretInKeyVault();
@@ -99,6 +91,21 @@ namespace AzureKeyVault
             DeleteSecretOperation operation = client.StartDeleteSecret(secretName);
             operation.WaitForCompletion();
             Console.WriteLine($"Secret [{secretName}] have been deleted.");
+        }
+
+        /// <summary>
+        /// 启用Azure Identity库的调试日志输出，方便调试身份验证问题。
+        /// 输出的日志可以查看为什么连接缓慢，或者连接失败。
+        /// </summary>
+        static void DebugAzureIdentity()
+        {
+            using var listener = new AzureEventSourceListener(
+                (args, message) =>
+                {
+                    if (args.EventSource.Name == "Azure-Identity")
+                        Console.WriteLine(message);
+                },
+                EventLevel.Informational);
         }
     }
 }
