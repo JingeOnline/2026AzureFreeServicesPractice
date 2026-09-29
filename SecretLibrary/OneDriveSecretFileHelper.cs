@@ -36,15 +36,37 @@ namespace SecretLibrary
         }
 
         /// <summary>
-        /// 返回指定的key:subKey对应的值，如果该键不存在，则返回null
+        /// 返回指定的key对应的值
         /// </summary>
-        /// <param name="key"></param>
-        /// <param name="subKey"></param>
+        /// <param name="keys">将多个层级的key按照顺序传入</param>
         /// <returns></returns>
-        public static string? getJsonConfig(string key, string subKey)
+        /// <exception cref="ArgumentException">传入的keys参数为null或空数组</exception>
+        public static string? getJsonConfig(params string[] keys)
         {
-            var section = config.Value.GetSection(key).GetSection(subKey);
-            return section.Value;
+            if (keys == null || keys.Length == 0)
+            {
+                throw new ArgumentException("Keys cannot be null or empty.", nameof(keys));
+            }
+            else
+            {
+                IConfigurationSection? section= config.Value.GetSection(keys[0]);
+                if(section == null)
+                {
+                    throw new ArgumentException($"Key '{keys[0]}' not found in the configuration.", nameof(keys));
+                }
+                if(keys.Length > 1)
+                {
+                    for(int i = 1; i < keys.Length; i++)
+                    {
+                        section = section.GetSection(keys[i]);
+                        if(section == null)
+                        {
+                            throw new ArgumentException($"Key '{keys[i]}' not found in the configuration.", nameof(keys));
+                        }
+                    }
+                }
+                return section.Value;
+            }
         }
     }
 }

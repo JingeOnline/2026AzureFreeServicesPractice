@@ -1,5 +1,7 @@
 ﻿using Azure;
+using Azure.Core.Diagnostics;
 using Azure.Security.KeyVault.Secrets;
+using System.Diagnostics.Tracing;
 
 namespace AzureKeyVault
 {
@@ -18,6 +20,14 @@ namespace AzureKeyVault
 
         static void Main(string[] args)
         {
+            using var listener = new AzureEventSourceListener(
+    (args, message) =>
+    {
+        if (args.EventSource.Name == "Azure-Identity")
+            Console.WriteLine(message);
+    },
+    EventLevel.Informational);
+
             GetSecretFromKeyVault();
             Console.WriteLine();
             CreateSecretInKeyVault();
