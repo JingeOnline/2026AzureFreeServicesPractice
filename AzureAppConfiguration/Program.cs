@@ -4,6 +4,7 @@ using Azure.Identity;
 using SecretLibrary;
 using System.Diagnostics.Tracing;
 using System.Net;
+using System.Text.Json;
 
 namespace AzureAppConfiguration
 {
@@ -18,6 +19,8 @@ namespace AzureAppConfiguration
             var client = ConnectByEntraId();
             //var client = ConnectByAccessKeyConnectionString();
             ReadConfigFromAzureAppConfiguration(client);
+            Console.WriteLine();
+            UpdateAzureAppConfiguration(client);
         }
 
         /// <summary>
@@ -66,13 +69,41 @@ namespace AzureAppConfiguration
             //否则会抛出异常：404，The configuration setting with key 'Practice:ConsoleApp:JsonConfig' and label 'null' was not found.
             ConfigurationSetting setting = client.GetConfigurationSetting("Practice:ConsoleApp:JsonConfig", "Development");
             string jsonValue = setting.Value;
-            Console.WriteLine("Value:\n" + setting.Value);
+            TestConfigModel configModel = JsonSerializer.Deserialize<TestConfigModel>(jsonValue);
+            Console.WriteLine("Value:\n" + jsonValue);
             Console.WriteLine("Description: " + setting.Description);
             Console.WriteLine("Label: " + setting.Label);
             Console.WriteLine("LastModified: " + setting.LastModified);
             Console.WriteLine("ContentType: " + setting.ContentType);
         }
 
+        static void UpdateAzureAppConfiguration(ConfigurationClient client)
+        {
+            ConfigurationSetting setting = client.GetConfigurationSetting("Practice:ConsoleApp:JsonConfig", "Development");
+            //将json字符串反序列化为模型
+            TestConfigModel configModel = JsonSerializer.Deserialize<TestConfigModel>(setting.Value);
+            //更新一下时间
+            configModel.UpdateDateTime = DateTime.Now;
+
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                // 将JSON 字符串格式化为带缩进的形式
+                WriteIndented = true,
+                // 保留中文，避免输出为 \uXXXX
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+            //再序列化为json字符串
+            setting.Value = JsonSerializer.Serialize(configModel, options);
+
+            //这里还修改了Description字段，但是没有修改content type字段，content type字段会保留之前的值。
+            setting.Description = $"This is a json config created by console app on {DateTime.Now}，it is a {setting.Label} version.";
+            
+            //onlyIfUnchanged: true 会通过 ETag 检查配置是否被其他人修改，发生冲突时抛出异常，防止覆盖。
+            client.SetConfigurationSetting(setting, onlyIfUnchanged: true);
+            Console.WriteLine("Update successful.");
+            Console.WriteLine();
+            ReadConfigFromAzureAppConfiguration(client);
+        }
 
         /// <summary>
         /// 启用Azure Identity库的调试日志输出，方便调试身份验证问题。

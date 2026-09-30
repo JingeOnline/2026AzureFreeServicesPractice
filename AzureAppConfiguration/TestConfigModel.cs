@@ -10,5 +10,6 @@ namespace AzureAppConfiguration
         public bool IsEnabled { get; set; }
         public int Size { get; set; }
         public string[] Categories { get; set; }
+        public DateTime UpdateDateTime { get; set; }
     }
 }
