@@ -3,16 +3,19 @@ using AzureServiceBus.Shared;
 using Microsoft.Azure.Amqp.Framing;
 using SecretLibrary;
 using System.Text;
-using System.Text.Json;
+//using System.Text.Json;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace AzureServiceBus.ClientA
 {
+    /// <summary>
+    /// 使用Connection string连接Azure Service Bus，发送和接收消息。
+    /// </summary>
     internal class Program
     {
         static string QueueName = "practiceprojectqueue";
         static string ConnectionString = OneDriveSecretFileHelper.getJsonConfig("2026AzurePractice:AzureServiceBusConnectionString")!;
-        static string UserName = "Lucy";
+        static string UserName = "ClientA";
         static event Action ChangeModeToPeek;
         static bool IsProcessorStart = true;
 
@@ -28,25 +31,11 @@ namespace AzureServiceBus.ClientA
             await SetUpSender(sender, client);
         }
 
-        static string CreateJsonMessage(string message)
-        {
-            MessageModel model = new MessageModel
-            {
-                Sender = UserName,
-                Time = DateTime.Now,
-                Content = message
-            };
-            JsonSerializerOptions options = new JsonSerializerOptions
-            {
-                // 保留中文，避免输出为 \uXXXX
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-            return JsonSerializer.Serialize(model, options);
-        }
+
 
         static async Task SendMessageAsync(ServiceBusSender sender, string message)
         {
-            string jsonMessage = CreateJsonMessage(message);
+            string jsonMessage = JsonHelper.CreateJsonMessage(UserName, message);
             ServiceBusMessage serviceBusMessage = new ServiceBusMessage(jsonMessage);
             await sender.SendMessageAsync(serviceBusMessage);
         }
@@ -134,7 +123,7 @@ namespace AzureServiceBus.ClientA
         static async Task MessageHandler(ProcessMessageEventArgs args)
         {
             string body = args.Message.Body.ToString();
-            MessageModel? messageModel = JsonSerializer.Deserialize<MessageModel>(body);
+            MessageModel? messageModel = JsonHelper.DeserializeJsonMessage(body);
             Console.WriteLine();
             Console.WriteLine(new string(' ', 70) + $"[{messageModel.Sender}] [{messageModel.Time}]");
             Console.WriteLine(new string(' ', 70) + $"{messageModel.Content}");
@@ -152,21 +141,29 @@ namespace AzureServiceBus.ClientA
             return Task.CompletedTask;
         }
 
+
+        /// <summary>
+        /// Peek模式查看消息
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns></returns>
         static async Task Peek(ServiceBusClient client)
         {
             await using ServiceBusReceiver receiver = client.CreateReceiver(QueueName);
 
             var messages = await receiver.PeekMessagesAsync(maxMessages: 30);
-
-            foreach (ServiceBusReceivedMessage message in messages)
-            {
-                Console.WriteLine(
-                    $"[{message.SequenceNumber}] {message.Body}");
-            }
-
             if (messages.Count == 0)
             {
-                Console.WriteLine("没有可查看的消息。");
+                Console.WriteLine("Queue中没有消息。");
+            }
+            else
+            {
+                foreach (ServiceBusReceivedMessage message in messages)
+                {
+                    Console.WriteLine(
+                        $"[{message.SequenceNumber}] [{message.EnqueuedTime}] {message.Body}");
+                }
+
             }
         }
     }

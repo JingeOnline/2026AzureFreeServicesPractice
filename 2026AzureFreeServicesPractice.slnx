@@ -2,6 +2,7 @@
   <Project Path="AzureAppConfiguration/AzureAppConfiguration.csproj" />
   <Project Path="AzureKeyVault/AzureKeyVault.csproj" />
   <Project Path="AzureServiceBus.ClientA/AzureServiceBus.ClientA.csproj" Id="42ae50a4-c33f-4073-a7c1-38865c24494a" />
+  <Project Path="AzureServiceBus.ClientB/AzureServiceBus.ClientB.csproj" Id="67842414-66cd-4274-9cf3-290cc1750348" />
   <Project Path="AzureServiceBus.Shared/AzureServiceBus.Shared.csproj" Id="7ff527ab-f33d-44cb-bf5f-1639d5eb5342" />
   <Project Path="CosmosDbSampleData/CosmosDbSampleData.csproj" />
   <Project Path="SecretLibrary/SecretLibrary.csproj" />
